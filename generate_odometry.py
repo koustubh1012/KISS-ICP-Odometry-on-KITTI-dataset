@@ -2,9 +2,10 @@
 import os
 import subprocess
 from pathlib import Path
+import sys
 
 KITTI_ROOT = Path(__file__).parent
-SEQ = "00"
+SEQ = sys.argv[1] if len(sys.argv) > 1 else "00"
 OUT_ROOT = KITTI_ROOT / "outputs" / SEQ
 
 def run_kiss_icp():
