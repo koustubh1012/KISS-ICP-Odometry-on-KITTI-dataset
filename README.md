@@ -1,5 +1,7 @@
 # KISS-ICP Odometry on KITTI dataset
 
+![animation](outputs/animation.gif)
+
 A small pipeline to run KISS-ICP on KITTI odometry sequences and evaluate the results using the EVO toolkit.
 
 This repository contains a convenience script (generate_odometry.py) that:
