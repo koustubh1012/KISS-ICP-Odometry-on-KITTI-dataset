@@ -1,0 +1,14 @@
+name: kitti_lo
+channels:
+  - conda-forge
+dependencies:
+  - python=3.10
+  - pip
+  - pip:
+      - numpy
+      - kiss-icp
+      - evo
+      - open3d
+      - opencv-python
+      - matplotlib
+      - polyscope==2.2.1
