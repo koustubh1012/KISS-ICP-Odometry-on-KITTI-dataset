@@ -3,9 +3,9 @@ import os
 import subprocess
 from pathlib import Path
 
-KITTI_ROOT = Path("/home/koustubh/Downloads/KITTI/combined")
-SEQ = "01"
-OUT_ROOT = Path(f"/home/koustubh/Downloads/KITTI/outputs/{SEQ}")
+KITTI_ROOT = Path(__file__).parent
+SEQ = "00"
+OUT_ROOT = KITTI_ROOT / "outputs" / SEQ
 
 def run_kiss_icp():
     OUT_ROOT.mkdir(parents=True, exist_ok=True)
