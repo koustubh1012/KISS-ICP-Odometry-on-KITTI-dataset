@@ -34,6 +34,56 @@ def find_latest_run_dir() -> Path:
         raise FileNotFoundError(f"No run directories found in {OUT_ROOT}")
     return max(dirs, key=lambda p: p.stat().st_mtime)
 
+def evaluate_with_evo(run_dir: Path):
+    gt = run_dir / f"{SEQ}_gt_kitti.txt"
+    est = run_dir / f"{SEQ}_poses_kitti.txt"
+
+    if not gt.exists() or not est.exists():
+        raise FileNotFoundError(f"Missing GT/EST files in {run_dir}")
+
+    results_dir = run_dir / "evo_results"
+    results_dir.mkdir(exist_ok=True)
+
+    # APE (Absolute Pose Error)
+    ape_cmd = [
+        "evo_ape", "kitti", str(gt), str(est),
+        "-a", "--plot", "--plot_mode", "xyz",
+        "--save_plot", str(results_dir / f"ape_{SEQ}.png")
+    ]
+
+    # RPE (Relative Pose Error)
+    rpe_cmd = [
+        "evo_rpe", "kitti", str(gt), str(est),
+        "-a", "--plot", "--plot_mode", "xyz",
+        "--save_plot", str(results_dir / f"rpe_{SEQ}.png")
+    ]
+
+    # Trajectory overlay (GT vs EST)
+    traj_cmd = [
+        "evo_traj", "kitti", str(gt), str(est),
+        "-p", "--plot_mode", "xyz",
+        "--save_plot", str(results_dir / f"traj_{SEQ}.png")
+    ]
+
+    print("\nRunning EVO APE:", " ".join(ape_cmd))
+    with open(results_dir / "ape_stats.txt", "w") as f:
+        subprocess.run(ape_cmd, check=True, stdout=f, stderr=subprocess.STDOUT)
+
+    print("Running EVO RPE:", " ".join(rpe_cmd))
+    with open(results_dir / "rpe_stats.txt", "w") as f:
+        subprocess.run(rpe_cmd, check=True, stdout=f, stderr=subprocess.STDOUT)
+
+    print("Running EVO TRAJ:", " ".join(traj_cmd))
+    with open(results_dir / "traj_stats.txt", "w") as f:
+        subprocess.run(traj_cmd, check=True, stdout=f, stderr=subprocess.STDOUT)
+
+    print("\n✅ Saved EVO outputs to:", results_dir)
+    print(" -", results_dir / f"ape_{SEQ}.png")
+    print(" -", results_dir / f"rpe_{SEQ}.png")
+    print(" -", results_dir / f"traj_{SEQ}.png")
+    print(" - ape_stats.txt / rpe_stats.txt / traj_stats.txt")
+
+
 def main():
     run_kiss_icp()  # NOTE: with --visualize this may block until you close the window
     run_dir = find_latest_run_dir()
@@ -49,6 +99,9 @@ def main():
         print("\nFiles in run dir:")
         for p in sorted(run_dir.iterdir()):
             print(" -", p.name)
+    
+    evaluate_with_evo(run_dir)
+
 
 if __name__ == "__main__":
     main()
