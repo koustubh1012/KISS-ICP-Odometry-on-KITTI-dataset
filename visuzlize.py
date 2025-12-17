@@ -1,56 +1,56 @@
-#!/usr/bin/env python3
+import time
 import numpy as np
 import open3d as o3d
 from pathlib import Path
 
-RUN_DIR = Path("/home/koustubh/Downloads/KITTI/outputs/01/latest")  # adjust as needed
-SEQ = "01"
+VELO_DIR = Path("/home/koustubh/Downloads/KITTI/combined/sequences/00/velodyne")
 
-EST_FILE = RUN_DIR / f"{SEQ}_poses_kitti.txt"
-GT_FILE  = RUN_DIR / f"{SEQ}_gt_kitti.txt"   # optional overlay
+SLEEP_SEC = 0.02
+VOXEL = 0.20  # increase if slow
 
-def load_kitti_poses(path: Path) -> np.ndarray:
-    # KITTI pose txt: each line = 12 numbers (3x4)
-    P = np.loadtxt(str(path)).reshape(-1, 3, 4)
-    T = np.repeat(np.eye(4)[None, :, :], P.shape[0], axis=0)
-    T[:, :3, :4] = P
-    return T
+def load_bin(bin_path: Path):
+    pts = np.fromfile(str(bin_path), dtype=np.float32).reshape(-1, 4)[:, :3]
+    return pts
 
-def make_lineset(points_xyz: np.ndarray):
-    lines = [[i, i+1] for i in range(len(points_xyz) - 1)]
-    ls = o3d.geometry.LineSet(
-        points=o3d.utility.Vector3dVector(points_xyz),
-        lines=o3d.utility.Vector2iVector(lines),
-    )
-    return ls
+bin_files = sorted(VELO_DIR.glob("*.bin"))
+print("num scans:", len(bin_files), "first:", bin_files[0])
 
-def main():
-    est_T = load_kitti_poses(EST_FILE)
-    est_xyz = est_T[:, :3, 3]
+vis = o3d.visualization.Visualizer()
+vis.create_window("Step1: LiDAR scan playback (sensor frame)", 1280, 720)
 
-    geometries = []
+pcd = o3d.geometry.PointCloud()
+vis.add_geometry(pcd)
 
-    est_ls = make_lineset(est_xyz)
-    est_ls.paint_uniform_color([0, 1, 0])  # green
-    geometries.append(est_ls)
+opt = vis.get_render_option()
+opt.point_size = 1.0
+opt.background_color = np.asarray([0, 0, 0])
 
-    # Optional: overlay GT if available
-    if GT_FILE.exists():
-        gt_T = load_kitti_poses(GT_FILE)
-        gt_xyz = gt_T[:, :3, 3]
-        gt_ls = make_lineset(gt_xyz)
-        gt_ls.paint_uniform_color([0, 0, 1])  # blue
-        geometries.append(gt_ls)
+ctr = vis.get_view_control()
+camera_set = False
 
-    # Coordinate frame for reference
-    geometries.append(o3d.geometry.TriangleMesh.create_coordinate_frame(size=5.0))
+for i, f in enumerate(bin_files):
+    pts = load_bin(f)
+    tmp = o3d.geometry.PointCloud(o3d.utility.Vector3dVector(pts))
+    if VOXEL and VOXEL > 0:
+        tmp = tmp.voxel_down_sample(VOXEL)
 
-    o3d.visualization.draw_geometries(
-        geometries,
-        window_name=f"KITTI {SEQ} Trajectory (Green=EST, Blue=GT)",
-        width=1280,
-        height=720,
-    )
+    pcd.points = tmp.points
 
-if __name__ == "__main__":
-    main()
+    # Make points visible (white)
+    npts = np.asarray(pcd.points).shape[0]
+    pcd.colors = o3d.utility.Vector3dVector(np.ones((npts, 3), dtype=np.float64))
+
+    if not camera_set and npts > 0:
+        center = pcd.get_center()
+        ctr.set_lookat(center)
+        ctr.set_front([1.0, 0.0, 0.0])
+        ctr.set_up([0.0, 0.0, 1.0])
+        ctr.set_zoom(0.35)
+        camera_set = True
+        vis.reset_view_point(True)
+
+    vis.update_geometry(pcd)
+    vis.poll_events()
+    vis.update_renderer()
+    time.sleep(SLEEP_SEC)
+
