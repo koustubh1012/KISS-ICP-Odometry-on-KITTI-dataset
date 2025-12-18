@@ -1,4 +1,4 @@
-# KISS-ICP Odometry on KITTI dataset
+# LiDAR Odometry with KITTI using KISS-ICP
 
 ![animation](outputs/animation.gif)
 
